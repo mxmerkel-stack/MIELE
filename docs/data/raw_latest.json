@@ -1,0 +1,131 @@
+{
+ "ts": "2026-11-16T21:27:32+00:00",
+ "devices": {
+  "000150676589": {
+   "ident": {
+    "type": {
+     "key_localized": "Gerätetyp",
+     "value_raw": 1,
+     "value_localized": "Waschmaschine"
+    },
+    "deviceName": "",
+    "protocolVersion": 4,
+    "deviceIdentLabel": {
+     "fabNumber": "000150676589",
+     "fabIndex": "19",
+     "techType": "WWG660",
+     "matNumber": "11284190",
+     "swids": [
+      "6939",
+      "20456",
+      "25213",
+      "25191",
+      "25446",
+      "25205",
+      "25447",
+      "25319"
+     ]
+    },
+    "xkmIdentLabel": {
+     "techType": "EK037",
+     "releaseVersion": "04.05"
+    }
+   },
+   "state": {
+    "ProgramID": {
+     "value_raw": 0,
+     "value_localized": "",
+     "key_localized": "Programmbezeichnung"
+    },
+    "status": {
+     "value_raw": 1,
+     "value_localized": "Aus",
+     "key_localized": "Status"
+    },
+    "programType": {
+     "value_raw": 0,
+     "value_localized": "",
+     "key_localized": "Programmart"
+    },
+    "programPhase": {
+     "value_raw": 0,
+     "value_localized": "",
+     "key_localized": "Programmphase"
+    },
+    "remainingTime": [
+     0,
+     0
+    ],
+    "startTime": [
+     0,
+     0
+    ],
+    "targetTemperature": [
+     {
+      "value_raw": -32768,
+      "value_localized": null,
+      "unit": "Celsius"
+     },
+     {
+      "value_raw": -32768,
+      "value_localized": null,
+      "unit": "Celsius"
+     },
+     {
+      "value_raw": -32768,
+      "value_localized": null,
+      "unit": "Celsius"
+     }
+    ],
+    "coreTargetTemperature": [
+     {
+      "value_raw": -32768,
+      "value_localized": null,
+      "unit": "Celsius"
+     }
+    ],
+    "temperature": [],
+    "coreTemperature": [
+     {
+      "value_raw": -32768,
+      "value_localized": null,
+      "unit": "Celsius"
+     }
+    ],
+    "signalInfo": false,
+    "signalFailure": false,
+    "signalDoor": false,
+    "remoteEnable": {
+     "fullRemoteControl": true,
+     "smartGrid": false,
+     "mobileStart": false
+    },
+    "ambientLight": null,
+    "light": null,
+    "elapsedTime": [
+     0,
+     0
+    ],
+    "spinningSpeed": {
+     "unit": "U/min",
+     "value_raw": null,
+     "value_localized": null,
+     "key_localized": "Schleuderdrehzahl"
+    },
+    "dryingStep": {
+     "value_raw": null,
+     "value_localized": "",
+     "key_localized": "Trockenstufe"
+    },
+    "ventilationStep": {
+     "value_raw": null,
+     "value_localized": "",
+     "key_localized": "Lüfterstufe"
+    },
+    "plateStep": [],
+    "ecoFeedback": null,
+    "batteryLevel": null
+   }
+  }
+ }
+}

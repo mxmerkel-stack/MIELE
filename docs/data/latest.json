@@ -1,17 +1,27 @@
 {
- "ts": "2026-11-16T19:43:36+00:00",
+ "ts": "2026-11-16T21:27:32+00:00",
  "devices": [
   {
    "id": "000150676589",
    "name": "Waschmaschine",
    "type": "Waschmaschine",
+   "model": "WWG660",
    "status": "Aus",
    "status_raw": 1,
    "program": "",
+   "program_raw": 0,
    "phase": "",
    "remaining_min": 0,
+   "elapsed_min": 0,
+   "temp_c": null,
+   "spin_rpm": null,
    "energy_kwh": null,
-   "water_l": null
+   "water_l": null,
+   "energy_forecast": null,
+   "water_forecast": null,
+   "signal_info": false,
+   "signal_failure": false,
+   "signal_door": false
   }
  ]
 }
