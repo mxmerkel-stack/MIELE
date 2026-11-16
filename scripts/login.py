@@ -77,7 +77,7 @@ def catch_code(client_id):
 
     url = AUTH_URL + "?" + urllib.parse.urlencode({
         "client_id": client_id, "response_type": "code",
-        "redirect_uri": REDIRECT_URI, "scope": "openid",
+        "redirect_uri": REDIRECT_URI, "state": "miele",
     })
     print("Browser öffnet sich jetzt. Bitte bei Miele anmelden ...")
     webbrowser.open(url)
