@@ -5,120 +5,365 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Miele Dashboard</title>
 <style>
-  :root { --bg:#f6f6f4; --card:#fff; --fg:#1b1b1b; --muted:#6b6b6b; --line:#e3e3df; --run:#1f7a4d; --idle:#8a8a85; --warn:#b4570a; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --card:#212120; --fg:#eee; --muted:#9a9a95; --line:#34342f; --run:#4fc58a; --idle:#7d7d78; --warn:#e89a52; } }
-  * { box-sizing: border-box; }
-  body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-  main { max-width:900px; margin:0 auto; padding:20px 16px 48px; }
-  h1 { font-size:1.4rem; margin:0 0 4px; }
-  .sub { color:var(--muted); font-size:.85rem; margin-bottom:20px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
-  .card h2 { font-size:1rem; margin:0 0 2px; }
-  .type { color:var(--muted); font-size:.8rem; }
-  .status { margin:10px 0 4px; font-weight:600; }
-  .status.run { color:var(--run); } .status.idle { color:var(--idle); } .status.warn { color:var(--warn); }
-  .meta { color:var(--muted); font-size:.85rem; }
-  h3 { font-size:1rem; margin:28px 0 8px; }
-  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; font-size:.9rem; }
-  th,td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
-  th { color:var(--muted); font-weight:500; font-size:.8rem; }
+  .viz-root {
+    color-scheme: light;
+    --bg:#f4f4f2; --surface-1:#fcfcfb; --line:#e4e3df; --grid:#ecebe7;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7a7975;
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --seq-100:#cde2fb; --seq-250:#86b6ef; --seq-400:#3987e5; --seq-550:#1c5cab; --seq-700:#0d366b;
+    --good:#008300; --warning:#b77a00; --critical:#d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      color-scheme: dark;
+      --bg:#121211; --surface-1:#1a1a19; --line:#2e2e2b; --grid:#262624;
+      --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+      --series-1:#3987e5; --series-2:#d95926;
+      --seq-100:#1b2c44; --seq-250:#1c5cab; --seq-400:#2a78d6; --seq-550:#5598e7; --seq-700:#b7d3f6;
+      --good:#0ca30c; --warning:#e0a020; --critical:#e66767;
+    }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text-primary); font:15px/1.45 system-ui,-apple-system,sans-serif; }
+  main { max-width:1040px; margin:0 auto; padding:20px 16px 56px; }
+  header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:16px; }
+  h1 { font-size:1.45rem; margin:0; }
+  h2 { font-size:1.02rem; margin:0 0 10px; }
+  .muted { color:var(--text-muted); font-size:.85rem; }
+  .sec { color:var(--text-secondary); }
+  .card { background:var(--surface-1); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .grid { display:grid; gap:12px; }
+  .g2 { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  .g3 { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+  .kpis { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .kpi .v { font-size:1.6rem; font-weight:650; font-variant-numeric:tabular-nums; }
+  .kpi .l { color:var(--text-secondary); font-size:.82rem; }
+  section { margin-top:22px; }
+  .filters { display:flex; gap:6px; flex-wrap:wrap; }
+  .filters button { font:inherit; font-size:.85rem; padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:var(--surface-1); color:var(--text-secondary); cursor:pointer; }
+  .filters button[aria-pressed="true"] { background:var(--text-primary); color:var(--surface-1); border-color:var(--text-primary); }
+  .live h3 { margin:0; font-size:1.05rem; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-weight:600; margin:8px 0 4px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--text-muted); }
+  .dot.run { background:var(--good); } .dot.warn { background:var(--warning); } .dot.crit { background:var(--critical); }
+  .bar { height:8px; border-radius:4px; background:var(--grid); overflow:hidden; margin-top:8px; }
+  .bar > div { height:100%; background:var(--series-1); border-radius:4px; }
+  table { width:100%; border-collapse:collapse; font-size:.88rem; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--text-muted); font-weight:500; font-size:.78rem; }
+  td.n, th.n { text-align:right; }
   tr:last-child td { border-bottom:0; }
-  svg { width:100%; height:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; }
+  svg { display:block; width:100%; height:auto; overflow:visible; }
+  svg text { fill:var(--text-muted); font-size:11px; }
+  .hit:hover + .mark, .mark:hover { opacity:.8; }
+  .maint .state { display:flex; align-items:center; gap:6px; font-weight:600; margin:6px 0 2px; }
+  .empty { color:var(--text-muted); font-size:.88rem; padding:12px 0; }
+  #tip { position:fixed; pointer-events:none; background:var(--text-primary); color:var(--surface-1); padding:6px 9px; border-radius:6px; font-size:.8rem; line-height:1.35; opacity:0; transition:opacity .08s; z-index:10; max-width:240px; }
+  details summary { cursor:pointer; color:var(--text-secondary); font-size:.88rem; }
+  pre { white-space:pre-wrap; word-break:break-all; font-size:.75rem; max-height:360px; overflow:auto; }
 </style>
 </head>
-<body>
+<body class="viz-root">
 <main>
-  <h1>Miele</h1>
-  <div class="sub" id="stamp">Lade …</div>
-  <div class="grid" id="cards"></div>
-  <h3>Aktivität (letzte 7 Tage)</h3>
-  <div id="timeline"></div>
-  <h3>Zuletzt gelaufene Programme</h3>
-  <table id="runs"><thead><tr><th>Gerät</th><th>Programm</th><th>Start</th><th>Dauer</th></tr></thead><tbody></tbody></table>
-</main>
-<script>
-const fmtMin = m => m == null ? "–" : (m >= 60 ? Math.floor(m/60) + " h " + (m%60) + " min" : m + " min");
-const fmtTs = s => new Date(s).toLocaleString("de-DE", { dateStyle:"short", timeStyle:"short" });
+  <header>
+    <h1>Miele</h1>
+    <div class="muted" id="stamp">Lade …</div>
+  </header>
 
+  <div class="grid g3" id="live"></div>
+
+  <section>
+    <header style="margin-bottom:10px">
+      <h2 style="margin:0">Verbrauch & Nutzung</h2>
+      <div class="filters" role="group" aria-label="Zeitraum">
+        <button data-r="7">7 Tage</button>
+        <button data-r="30" aria-pressed="true">30 Tage</button>
+        <button data-r="365">12 Monate</button>
+        <button data-r="all">Gesamt</button>
+      </div>
+    </header>
+    <div class="grid kpis" id="kpis"></div>
+  </section>
+
+  <section class="grid g2">
+    <div class="card"><h2>Strom (kWh)</h2><div id="ch-energy"></div></div>
+    <div class="card"><h2>Wasser (Liter)</h2><div id="ch-water"></div></div>
+  </section>
+
+  <section class="grid g2">
+    <div class="card"><h2>Programme</h2><div id="ch-programs"></div></div>
+    <div class="card"><h2>Wann gewaschen wird</h2><div id="ch-heat"></div></div>
+  </section>
+
+  <section class="grid g2">
+    <div class="card"><h2>Temperaturen</h2><div id="ch-temp"></div></div>
+    <div class="card"><h2>Schleuderdrehzahl</h2><div id="ch-spin"></div></div>
+  </section>
+
+  <section>
+    <h2>Pflege & Wartung</h2>
+    <div class="grid g3" id="maint"></div>
+    <p class="muted">Pflege-Programme werden automatisch erkannt. Manuelle Reinigungen trägst du in <code>docs/data/settings.json</code> bei <code>zuletzt_manuell</code> ein (Format <code>2026-11-16</code>). Dort lassen sich auch Intervalle und Preise ändern.</p>
+  </section>
+
+  <section class="card">
+    <h2>Programme im Detail</h2>
+    <div id="tbl-programs"></div>
+  </section>
+
+  <section class="card">
+    <h2>Letzte Waschgänge</h2>
+    <div id="tbl-runs"></div>
+  </section>
+
+  <section class="card">
+    <details><summary>Rohdaten der API (welche Felder liefert das Gerät?)</summary><pre id="raw">–</pre></details>
+  </section>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const nf = (v, d = 1) => v == null ? "–" : v.toLocaleString("de-DE", { maximumFractionDigits:d, minimumFractionDigits: d > 0 && v % 1 ? 1 : 0 });
+const eur = v => v == null ? "–" : v.toLocaleString("de-DE", { style:"currency", currency:"EUR" });
+const fmtMin = m => m == null ? "–" : (m >= 60 ? Math.floor(m/60) + " h " + String(Math.round(m%60)).padStart(2,"0") + " min" : Math.round(m) + " min");
+const fmtTs = s => new Date(s).toLocaleString("de-DE", { dateStyle:"short", timeStyle:"short" });
+const fmtD = d => new Date(d).toLocaleDateString("de-DE", { dateStyle:"medium" });
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const DAY = 864e5;
+
+let S = { latest:null, runs:[], open:{}, settings:{}, range:"30" };
+
+// ---------- Tooltip ----------
+const tip = $("#tip");
+document.addEventListener("pointermove", e => {
+  const t = e.target.closest("[data-tip]");
+  if (!t) { tip.style.opacity = 0; return; }
+  tip.innerHTML = t.dataset.tip;
+  const x = Math.min(e.clientX + 12, innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px"; tip.style.top = (e.clientY - tip.offsetHeight - 10) + "px"; tip.style.opacity = 1;
+});
+
+// ---------- Laden ----------
 async function load() {
-  const [latest, histTxt] = await Promise.all([
-    fetch("data/latest.json").then(r => r.json()),
-    fetch("data/history.jsonl").then(r => r.text()).catch(() => ""),
+  const j = (u, f) => fetch(u, { cache:"no-store" }).then(r => r.ok ? r.json() : f).catch(() => f);
+  const [latest, runs, settings, raw] = await Promise.all([
+    j("data/latest.json", null), j("data/runs.json", { runs:[], open:{} }),
+    j("data/settings.json", {}), j("data/raw_latest.json", null),
   ]);
-  const hist = histTxt.trim().split("\n").filter(Boolean).map(JSON.parse);
-  renderCards(latest);
-  renderRuns(hist);
-  renderTimeline(hist);
+  S.latest = latest; S.runs = runs.runs || []; S.open = runs.open || {}; S.settings = settings;
+  $("#raw").textContent = raw ? JSON.stringify(raw, null, 1) : "noch keine Rohdaten";
+  renderAll();
 }
 
-function renderCards(s) {
-  document.getElementById("stamp").textContent = "Stand: " + fmtTs(s.ts);
-  document.getElementById("cards").innerHTML = s.devices.map(d => {
-    const running = d.remaining_min > 0 || (d.program && d.status_raw === 5);
-    const cls = running ? "run" : (d.status_raw === 255 ? "warn" : "idle");
-    const bits = [];
-    if (d.program) bits.push(d.program);
-    if (d.phase) bits.push(d.phase);
-    if (running && d.remaining_min != null) bits.push("noch " + fmtMin(d.remaining_min));
-    if (d.energy_kwh != null) bits.push(d.energy_kwh + " kWh");
-    if (d.water_l != null) bits.push(d.water_l + " l");
-    return `<div class="card"><h2>${esc(d.name)}</h2><div class="type">${esc(d.type || "")}</div>
-      <div class="status ${cls}">${esc(d.status || "unbekannt")}</div>
-      <div class="meta">${esc(bits.join(" · ") || "–")}</div></div>`;
+document.querySelectorAll(".filters button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".filters button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  S.range = b.dataset.r; renderAll();
+});
+
+function inRange() {
+  if (S.range === "all") return S.runs;
+  const from = Date.now() - (+S.range) * DAY;
+  return S.runs.filter(r => new Date(r.start) >= from);
+}
+const isCare = r => (S.settings.pflege || []).some(p => p.programm_enthaelt?.some(k => (r.program || "").toLowerCase().includes(k)));
+
+function renderAll() {
+  const runs = inRange();
+  renderLive(); renderKpis(runs); renderTimeCharts(runs); renderPrograms(runs);
+  renderHeat(runs); renderDist(runs); renderMaint(); renderRunTable();
+}
+
+// ---------- Live ----------
+function renderLive() {
+  const L = S.latest;
+  $("#stamp").textContent = L ? "Stand: " + fmtTs(L.ts) : "Noch keine Daten";
+  if (!L) { $("#live").innerHTML = ""; return; }
+  $("#live").innerHTML = L.devices.map(d => {
+    const running = [5,6,9,11].includes(d.status_raw);
+    const cls = running ? "run" : d.status_raw === 8 || d.signal_failure ? "crit" : d.status_raw === 7 ? "warn" : "";
+    const bits = [d.program, d.phase, d.temp_c != null && running ? nf(d.temp_c,0) + " °C" : "", d.spin_rpm && running ? d.spin_rpm + " U/min" : ""].filter(Boolean);
+    const total = (d.remaining_min || 0) + (d.elapsed_min || 0);
+    const pct = running && total ? Math.round(100 * (d.elapsed_min || 0) / total) : null;
+    const eco = [d.energy_kwh != null ? nf(d.energy_kwh) + " kWh" : "", d.water_l != null ? nf(d.water_l,0) + " l" : ""].filter(Boolean).join(" · ");
+    return `<div class="card live"><h3>${esc(d.name)}</h3><div class="muted">${esc(d.model || d.type || "")}</div>
+      <div class="pill"><span class="dot ${cls}"></span>${esc(d.status || "unbekannt")}</div>
+      <div class="sec">${esc(bits.join(" · ") || "–")}</div>
+      ${pct != null ? `<div class="bar" title="${pct} %"><div style="width:${pct}%"></div></div><div class="muted">noch ${fmtMin(d.remaining_min)}</div>` : ""}
+      ${eco ? `<div class="muted">Bisher: ${eco}</div>` : ""}
+      ${d.signal_info ? `<div class="muted">ⓘ Gerät meldet einen Hinweis (z. B. Pflege oder Dosierung) – Display/App prüfen</div>` : ""}
+      ${d.signal_failure ? `<div class="muted">⚠ Störung gemeldet</div>` : ""}</div>`;
   }).join("");
 }
 
-// Läufe aus der Historie ableiten: Programm aktiv = remaining_min > 0 oder Status "läuft"
-function deviceRuns(hist) {
-  const runs = [], open = {};
-  for (const snap of hist) {
-    for (const d of snap.devices) {
-      const active = (d.remaining_min || 0) > 0 || d.status_raw === 5;
-      const o = open[d.id];
-      if (active && !o) open[d.id] = { name:d.name, program:d.program, start:snap.ts, last:snap.ts };
-      else if (active && o) { o.last = snap.ts; o.program = o.program || d.program; }
-      else if (!active && o) { runs.push({ ...o, end:snap.ts, id:d.id }); delete open[d.id]; }
+// ---------- KPIs ----------
+function sum(a, k) { const v = a.map(r => r[k]).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) : null; }
+function renderKpis(runs) {
+  const kwh = sum(runs, "energy_kwh"), l = sum(runs, "water_l");
+  const pE = S.settings.strompreis_eur_kwh, pW = S.settings.wasserpreis_eur_m3;
+  const cost = (kwh != null || l != null) ? (kwh || 0) * (pE || 0) + (l || 0) / 1000 * (pW || 0) : null;
+  const washes = runs.filter(r => !isCare(r)).length;
+  const items = [
+    ["Waschgänge", washes, ""],
+    ["Strom", kwh != null ? nf(kwh) + " kWh" : "–", kwh != null && washes ? "Ø " + nf(kwh / washes, 2) + " kWh je Wäsche" : ""],
+    ["Wasser", l != null ? nf(l, 0) + " l" : "–", l != null && washes ? "Ø " + nf(l / washes, 0) + " l je Wäsche" : ""],
+    ["Kosten", eur(cost), `${nf(pE,2)} €/kWh · ${nf(pW,2)} €/m³`],
+    ["Laufzeit", nf((sum(runs, "duration_min") || 0) / 60, 0) + " h", ""],
+  ];
+  $("#kpis").innerHTML = items.map(([l, v, s]) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="muted">${s}</div></div>`).join("");
+}
+
+// ---------- Balkendiagramm (eine Reihe, eine Achse) ----------
+function buckets() {
+  const now = new Date(); now.setHours(0,0,0,0);
+  const out = [];
+  if (S.range === "7" || S.range === "30") {
+    const n = +S.range;
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(now - i * DAY);
+      out.push({ from:+d, to:+d + DAY, label:d.toLocaleDateString("de-DE", n === 7 ? { weekday:"short" } : { day:"numeric", month:"numeric" }), full:fmtD(d) });
+    }
+  } else {
+    let first = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    if (S.range === "all" && S.runs.length) {
+      const f = new Date(Math.min(...S.runs.map(r => +new Date(r.start))));
+      const ff = new Date(f.getFullYear(), f.getMonth(), 1);
+      if (ff < first) first = ff;
+    }
+    for (let d = first; d <= now; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+      const e = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      out.push({ from:+d, to:+e, label:d.toLocaleDateString("de-DE", { month:"short" }), full:d.toLocaleDateString("de-DE", { month:"long", year:"numeric" }) });
     }
   }
-  for (const [id, o] of Object.entries(open)) runs.push({ ...o, end:o.last, id, ongoing:true });
-  return runs;
+  return out;
 }
 
-function renderRuns(hist) {
-  const runs = deviceRuns(hist).sort((a,b) => b.start.localeCompare(a.start)).slice(0, 15);
-  document.querySelector("#runs tbody").innerHTML = runs.length ? runs.map(r => {
-    const min = Math.max(0, Math.round((new Date(r.end) - new Date(r.start)) / 60000));
-    return `<tr><td>${esc(r.name)}</td><td>${esc(r.program || "–")}</td><td>${fmtTs(r.start)}</td><td>${r.ongoing ? "läuft …" : fmtMin(min)}</td></tr>`;
-  }).join("") : `<tr><td colspan="4" class="meta">Noch keine Läufe aufgezeichnet.</td></tr>`;
-}
+function niceMax(v) { if (!v) return 1; const raw = v / 4, p = 10 ** Math.floor(Math.log10(raw)); const step = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw); return step * 4; }
 
-function renderTimeline(hist) {
-  const el = document.getElementById("timeline");
-  const to = Date.now(), from = to - 7*864e5;
-  const runs = deviceRuns(hist).filter(r => new Date(r.end) >= from);
-  const names = [...new Set(hist.flatMap(s => s.devices.map(d => d.name)))];
-  if (!names.length) { el.innerHTML = ""; return; }
-  const W = 860, rowH = 28, padL = 130, H = names.length * rowH + 30;
-  const x = t => padL + (Math.max(t, from) - from) / (to - from) * (W - padL - 10);
+function barChart(el, data, unit, dec) {
+  if (!data.some(d => d.v)) { el.innerHTML = `<div class="empty">Noch keine Verbrauchswerte in diesem Zeitraum.</div>`; return; }
+  const W = 480, H = 200, pl = 34, pb = 22, pt = 8, iw = W - pl - 4, ih = H - pb - pt;
+  const max = niceMax(Math.max(...data.map(d => d.v || 0)));
+  const bw = iw / data.length, gap = Math.min(2, bw * .25);
   let g = "";
-  for (let i = 0; i <= 7; i++) {
-    const t = from + i * 864e5, xx = x(t);
-    g += `<line x1="${xx}" x2="${xx}" y1="0" y2="${H-24}" stroke="var(--line)"/>
-          <text x="${xx}" y="${H-8}" font-size="11" fill="var(--muted)" text-anchor="middle">${new Date(t).toLocaleDateString("de-DE",{weekday:"short"})}</text>`;
+  for (let i = 0; i <= 4; i++) {
+    const y = pt + ih - ih * i / 4;
+    g += `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${pl-6}" y="${y+4}" text-anchor="end">${nf(max*i/4, 2)}</text>`;
   }
-  names.forEach((n, i) => {
-    g += `<text x="8" y="${i*rowH+18}" font-size="12" fill="var(--fg)">${esc(n.slice(0,18))}</text>`;
-    runs.filter(r => r.name === n).forEach(r => {
-      const x1 = x(new Date(r.start)), x2 = Math.max(x(new Date(r.end)), x1 + 3);
-      g += `<rect x="${x1}" y="${i*rowH+5}" width="${x2-x1}" height="${rowH-12}" rx="3" fill="var(--run)"><title>${esc(n)}: ${fmtTs(r.start)}</title></rect>`;
-    });
+  const every = Math.ceil(data.length / 10);
+  data.forEach((d, i) => {
+    const x = pl + i * bw, h = d.v ? Math.max(2, ih * d.v / max) : 0, y = pt + ih - h;
+    const tipTxt = `<b>${esc(d.full)}</b><br>${nf(d.v || 0, dec)} ${unit} · ${d.n} Wäsche${d.n === 1 ? "" : "n"}`;
+    g += `<rect x="${x}" y="${pt}" width="${bw}" height="${ih}" fill="transparent" data-tip="${esc(tipTxt)}"/>`;
+    if (h) g += `<path class="mark" pointer-events="none" fill="var(--series-1)" d="M${x+gap/2},${pt+ih} V${y+Math.min(4,h)} q0,-4 4,-4 H${x+bw-gap/2-4} q4,0 4,4 V${pt+ih} Z"/>`;
+    if (i % every === 0) g += `<text x="${x + bw/2}" y="${H-6}" text-anchor="middle">${esc(d.label)}</text>`;
   });
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Aktivität pro Gerät">${g}</svg>`;
+  g += `<line x1="${pl}" x2="${W}" y1="${pt+ih}" y2="${pt+ih}" stroke="var(--text-muted)" stroke-opacity=".5"/>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${unit} je Zeitraum">${g}</svg>`;
 }
 
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])); }
-load().catch(e => { document.getElementById("stamp").textContent = "Noch keine Daten (" + e.message + ")"; });
+function renderTimeCharts(runs) {
+  const b = buckets();
+  const agg = k => b.map(x => {
+    const rs = runs.filter(r => { const t = +new Date(r.start); return t >= x.from && t < x.to; });
+    return { ...x, v: sum(rs, k), n: rs.length };
+  });
+  barChart($("#ch-energy"), agg("energy_kwh"), "kWh", 2);
+  barChart($("#ch-water"), agg("water_l"), "l", 0);
+}
+
+// ---------- horizontale Balken ----------
+function hbars(el, rows, fmt) {
+  if (!rows.length) { el.innerHTML = `<div class="empty">Noch keine Daten in diesem Zeitraum.</div>`; return; }
+  const max = Math.max(...rows.map(r => r.v));
+  el.innerHTML = rows.map(r => `<div data-tip="${esc(r.tip || "")}" style="display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;margin:6px 0">
+    <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.label)}</div>
+    <div style="height:14px"><div style="height:100%;width:${Math.max(2, 100 * r.v / max)}%;background:var(--series-1);border-radius:0 4px 4px 0"></div></div>
+    <div class="sec" style="font-variant-numeric:tabular-nums">${fmt(r.v)}</div></div>`).join("");
+}
+
+function groupBy(runs, key) {
+  const m = new Map();
+  for (const r of runs) { const k = key(r); if (k == null) continue; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+  return m;
+}
+
+function renderPrograms(runs) {
+  const g = [...groupBy(runs, r => r.program || "Unbekannt")].sort((a, b) => b[1].length - a[1].length);
+  const total = runs.length;
+  hbars($("#ch-programs"), g.slice(0, 8).map(([p, rs]) => ({ label:p, v:rs.length, tip:`<b>${esc(p)}</b><br>${rs.length}× · ${Math.round(100*rs.length/total)} %` })), v => v + "×");
+  const avg = (rs, k) => { const s = sum(rs, k), n = rs.filter(r => r[k] != null).length; return n ? s / n : null; };
+  const pE = S.settings.strompreis_eur_kwh || 0, pW = S.settings.wasserpreis_eur_m3 || 0;
+  $("#tbl-programs").innerHTML = g.length ? `<table><thead><tr><th>Programm</th><th class="n">Anzahl</th><th class="n">Ø kWh</th><th class="n">Ø Liter</th><th class="n">Ø Dauer</th><th class="n">Ø Kosten</th></tr></thead><tbody>${
+    g.map(([p, rs]) => { const e = avg(rs,"energy_kwh"), w = avg(rs,"water_l");
+      return `<tr><td>${esc(p)}</td><td class="n">${rs.length}</td><td class="n">${nf(e,2)}</td><td class="n">${nf(w,0)}</td><td class="n">${fmtMin(avg(rs,"duration_min"))}</td><td class="n">${e==null&&w==null?"–":eur((e||0)*pE+(w||0)/1000*pW)}</td></tr>`; }).join("")
+  }</tbody></table>` : `<div class="empty">Noch keine Waschgänge im Zeitraum.</div>`;
+}
+
+function renderDist(runs) {
+  const t = [...groupBy(runs, r => r.temp_c != null ? Math.round(r.temp_c) : null)].sort((a, b) => a[0] - b[0]);
+  hbars($("#ch-temp"), t.map(([k, rs]) => ({ label: k === 0 ? "kalt" : k + " °C", v:rs.length, tip:`${k} °C: ${rs.length}×` })), v => v + "×");
+  const s = [...groupBy(runs, r => r.spin_rpm || null)].sort((a, b) => a[0] - b[0]);
+  hbars($("#ch-spin"), s.map(([k, rs]) => ({ label:k + " U/min", v:rs.length, tip:`${k} U/min: ${rs.length}×` })), v => v + "×");
+}
+
+// ---------- Heatmap Wochentag × Tageszeit (sequenziell) ----------
+function renderHeat(runs) {
+  const el = $("#ch-heat");
+  if (!runs.length) { el.innerHTML = `<div class="empty">Noch keine Daten in diesem Zeitraum.</div>`; return; }
+  const days = ["Mo","Di","Mi","Do","Fr","Sa","So"], slots = ["0–6","6–9","9–12","12–15","15–18","18–21","21–24"], edges = [0,6,9,12,15,18,21,24];
+  const m = days.map(() => slots.map(() => 0));
+  runs.forEach(r => { const d = new Date(r.start); const di = (d.getDay() + 6) % 7, h = d.getHours(); const si = edges.findIndex((e, i) => h >= e && h < edges[i+1]); m[di][si]++; });
+  const max = Math.max(...m.flat()), steps = ["var(--seq-100)","var(--seq-250)","var(--seq-400)","var(--seq-550)","var(--seq-700)"];
+  const W = 480, cw = (W - 34) / 7, ch = 24; let g = "";
+  slots.forEach((s, j) => g += `<text x="0" y="${22 + j*ch + ch/2 + 4}">${s}</text>`);
+  days.forEach((d, i) => {
+    g += `<text x="${34 + i*cw + cw/2}" y="12" text-anchor="middle">${d}</text>`;
+    slots.forEach((s, j) => { const v = m[i][j];
+      const fill = v ? steps[Math.min(4, Math.ceil(4 * v / max))] : "var(--grid)";
+      g += `<rect x="${34 + i*cw + 1}" y="${20 + j*ch + 1}" width="${cw-2}" height="${ch-2}" rx="3" fill="${fill}" data-tip="${d} ${s} Uhr: ${v} Wäsche${v===1?"":"n"}"/>`; });
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${20 + slots.length*ch + 4}" role="img" aria-label="Waschgänge nach Wochentag und Uhrzeit">${g}</svg>
+    <div class="muted" style="display:flex;align-items:center;gap:4px;margin-top:8px">weniger ${steps.map(c => `<span style="width:16px;height:10px;border-radius:2px;background:${c}"></span>`).join("")} mehr</div>`;
+}
+
+// ---------- Pflege ----------
+function renderMaint() {
+  const P = S.settings.pflege || [];
+  const now = Date.now();
+  $("#maint").innerHTML = P.map(p => {
+    const auto = S.runs.filter(r => p.programm_enthaelt?.some(k => (r.program || "").toLowerCase().includes(k)));
+    const cands = [...auto.map(r => +new Date(r.end || r.start))];
+    if (p.zuletzt_manuell) cands.push(+new Date(p.zuletzt_manuell));
+    const last = cands.length ? Math.max(...cands) : null;
+    const since = last ? S.runs.filter(r => +new Date(r.start) > last && !isCare(r)).length : S.runs.filter(r => !isCare(r)).length;
+    const days = last ? Math.floor((now - last) / DAY) : null;
+    let ratio = 0, due = [];
+    if (p.intervall_tage && days != null) { ratio = Math.max(ratio, days / p.intervall_tage); due.push(`fällig am ${fmtD(last + p.intervall_tage * DAY)}`); }
+    if (p.intervall_waschgaenge) { ratio = Math.max(ratio, since / p.intervall_waschgaenge); due.push(`spätestens nach ${p.intervall_waschgaenge} Wäschen (jetzt ${since})`); }
+    let cls = "run", txt = "In Ordnung";
+    if (!last) { cls = "warn"; txt = "Noch nicht erfasst"; }
+    else if (ratio >= 1) { cls = "crit"; txt = "Jetzt fällig"; }
+    else if (ratio >= .8) { cls = "warn"; txt = "Bald fällig"; }
+    return `<div class="card maint"><h2 style="margin:0">${esc(p.name)}</h2>
+      <div class="state"><span class="dot ${cls}"></span>${txt}</div>
+      <div class="sec">Zuletzt: ${last ? fmtD(last) + ` (vor ${days} Tag${days===1?"":"en"})` : "unbekannt"}</div>
+      <div class="muted">${due.join(" · ") || "Intervall: alle " + p.intervall_tage + " Tage"}</div>
+      ${last ? `<div class="bar"><div style="width:${Math.min(100, ratio*100)}%;background:var(--${cls === "crit" ? "critical" : cls === "warn" ? "warning" : "good"})"></div></div>` : ""}</div>`;
+  }).join("");
+}
+
+// ---------- Tabelle Läufe ----------
+function renderRunTable() {
+  const open = Object.values(S.open).map(o => ({ ...o, ongoing:true }));
+  const rs = [...open, ...S.runs].sort((a, b) => b.start.localeCompare(a.start)).slice(0, 25);
+  $("#tbl-runs").innerHTML = rs.length ? `<table><thead><tr><th>Start</th><th>Programm</th><th class="n">°C</th><th class="n">U/min</th><th class="n">Dauer</th><th class="n">kWh</th><th class="n">Liter</th></tr></thead><tbody>${
+    rs.map(r => `<tr><td>${fmtTs(r.start)}</td><td>${esc(r.program || "–")}${isCare(r) ? " 🧽" : ""}</td><td class="n">${nf(r.temp_c,0)}</td><td class="n">${r.spin_rpm ?? "–"}</td><td class="n">${r.ongoing ? "läuft …" : fmtMin(r.duration_min)}</td><td class="n">${nf(r.energy_kwh,2)}</td><td class="n">${nf(r.water_l,0)}</td></tr>`).join("")
+  }</tbody></table>` : `<div class="empty">Noch keine Waschgänge aufgezeichnet. Die erste Wäsche erscheint hier, sobald sie fertig ist.</div>`;
+}
+
+load().catch(e => $("#stamp").textContent = "Fehler beim Laden: " + e.message);
+setInterval(load, 5 * 60 * 1000);
 </script>
 </body>
 </html>

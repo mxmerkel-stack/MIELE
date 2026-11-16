@@ -1,0 +1,27 @@
+{
+  "strompreis_eur_kwh": 0.35,
+  "wasserpreis_eur_m3": 4.50,
+  "pflege": [
+    {
+      "name": "Maschinenpflege (Trommel/Hygiene)",
+      "programm_enthaelt": ["pflege", "hygiene", "reinigung"],
+      "intervall_tage": 60,
+      "intervall_waschgaenge": 40,
+      "zuletzt_manuell": null
+    },
+    {
+      "name": "TwinDos reinigen",
+      "programm_enthaelt": ["twindos"],
+      "intervall_tage": 180,
+      "intervall_waschgaenge": null,
+      "zuletzt_manuell": null
+    },
+    {
+      "name": "Flusensieb / Laugenpumpe prüfen",
+      "programm_enthaelt": [],
+      "intervall_tage": 90,
+      "intervall_waschgaenge": null,
+      "zuletzt_manuell": null
+    }
+  ]
+}
