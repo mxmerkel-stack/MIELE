@@ -1,6 +1,6 @@
 {
   "strompreis_eur_kwh": 0.28,
-  "wasserpreis_eur_m3": 4.50,
+  "wasserpreis_eur_m3": 1.45,
   "pflege": [
     {
       "name": "Maschinenpflege (Trommel/Hygiene)",
