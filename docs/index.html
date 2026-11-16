@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Miele Dashboard</title>
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --fg:#1b1b1b; --muted:#6b6b6b; --line:#e3e3df; --run:#1f7a4d; --idle:#8a8a85; --warn:#b4570a; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161615; --card:#212120; --fg:#eee; --muted:#9a9a95; --line:#34342f; --run:#4fc58a; --idle:#7d7d78; --warn:#e89a52; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.4 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width:900px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:1.4rem; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:.85rem; margin-bottom:20px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .card h2 { font-size:1rem; margin:0 0 2px; }
+  .type { color:var(--muted); font-size:.8rem; }
+  .status { margin:10px 0 4px; font-weight:600; }
+  .status.run { color:var(--run); } .status.idle { color:var(--idle); } .status.warn { color:var(--warn); }
+  .meta { color:var(--muted); font-size:.85rem; }
+  h3 { font-size:1rem; margin:28px 0 8px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; font-size:.9rem; }
+  th,td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:.8rem; }
+  tr:last-child td { border-bottom:0; }
+  svg { width:100%; height:auto; background:var(--card); border:1px solid var(--line); border-radius:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Miele</h1>
+  <div class="sub" id="stamp">Lade …</div>
+  <div class="grid" id="cards"></div>
+  <h3>Aktivität (letzte 7 Tage)</h3>
+  <div id="timeline"></div>
+  <h3>Zuletzt gelaufene Programme</h3>
+  <table id="runs"><thead><tr><th>Gerät</th><th>Programm</th><th>Start</th><th>Dauer</th></tr></thead><tbody></tbody></table>
+</main>
+<script>
+const fmtMin = m => m == null ? "–" : (m >= 60 ? Math.floor(m/60) + " h " + (m%60) + " min" : m + " min");
+const fmtTs = s => new Date(s).toLocaleString("de-DE", { dateStyle:"short", timeStyle:"short" });
+
+async function load() {
+  const [latest, histTxt] = await Promise.all([
+    fetch("data/latest.json").then(r => r.json()),
+    fetch("data/history.jsonl").then(r => r.text()).catch(() => ""),
+  ]);
+  const hist = histTxt.trim().split("\n").filter(Boolean).map(JSON.parse);
+  renderCards(latest);
+  renderRuns(hist);
+  renderTimeline(hist);
+}
+
+function renderCards(s) {
+  document.getElementById("stamp").textContent = "Stand: " + fmtTs(s.ts);
+  document.getElementById("cards").innerHTML = s.devices.map(d => {
+    const running = d.remaining_min > 0 || (d.program && d.status_raw === 5);
+    const cls = running ? "run" : (d.status_raw === 255 ? "warn" : "idle");
+    const bits = [];
+    if (d.program) bits.push(d.program);
+    if (d.phase) bits.push(d.phase);
+    if (running && d.remaining_min != null) bits.push("noch " + fmtMin(d.remaining_min));
+    if (d.energy_kwh != null) bits.push(d.energy_kwh + " kWh");
+    if (d.water_l != null) bits.push(d.water_l + " l");
+    return `<div class="card"><h2>${esc(d.name)}</h2><div class="type">${esc(d.type || "")}</div>
+      <div class="status ${cls}">${esc(d.status || "unbekannt")}</div>
+      <div class="meta">${esc(bits.join(" · ") || "–")}</div></div>`;
+  }).join("");
+}
+
+// Läufe aus der Historie ableiten: Programm aktiv = remaining_min > 0 oder Status "läuft"
+function deviceRuns(hist) {
+  const runs = [], open = {};
+  for (const snap of hist) {
+    for (const d of snap.devices) {
+      const active = (d.remaining_min || 0) > 0 || d.status_raw === 5;
+      const o = open[d.id];
+      if (active && !o) open[d.id] = { name:d.name, program:d.program, start:snap.ts, last:snap.ts };
+      else if (active && o) { o.last = snap.ts; o.program = o.program || d.program; }
+      else if (!active && o) { runs.push({ ...o, end:snap.ts, id:d.id }); delete open[d.id]; }
+    }
+  }
+  for (const [id, o] of Object.entries(open)) runs.push({ ...o, end:o.last, id, ongoing:true });
+  return runs;
+}
+
+function renderRuns(hist) {
+  const runs = deviceRuns(hist).sort((a,b) => b.start.localeCompare(a.start)).slice(0, 15);
+  document.querySelector("#runs tbody").innerHTML = runs.length ? runs.map(r => {
+    const min = Math.max(0, Math.round((new Date(r.end) - new Date(r.start)) / 60000));
+    return `<tr><td>${esc(r.name)}</td><td>${esc(r.program || "–")}</td><td>${fmtTs(r.start)}</td><td>${r.ongoing ? "läuft …" : fmtMin(min)}</td></tr>`;
+  }).join("") : `<tr><td colspan="4" class="meta">Noch keine Läufe aufgezeichnet.</td></tr>`;
+}
+
+function renderTimeline(hist) {
+  const el = document.getElementById("timeline");
+  const to = Date.now(), from = to - 7*864e5;
+  const runs = deviceRuns(hist).filter(r => new Date(r.end) >= from);
+  const names = [...new Set(hist.flatMap(s => s.devices.map(d => d.name)))];
+  if (!names.length) { el.innerHTML = ""; return; }
+  const W = 860, rowH = 28, padL = 130, H = names.length * rowH + 30;
+  const x = t => padL + (Math.max(t, from) - from) / (to - from) * (W - padL - 10);
+  let g = "";
+  for (let i = 0; i <= 7; i++) {
+    const t = from + i * 864e5, xx = x(t);
+    g += `<line x1="${xx}" x2="${xx}" y1="0" y2="${H-24}" stroke="var(--line)"/>
+          <text x="${xx}" y="${H-8}" font-size="11" fill="var(--muted)" text-anchor="middle">${new Date(t).toLocaleDateString("de-DE",{weekday:"short"})}</text>`;
+  }
+  names.forEach((n, i) => {
+    g += `<text x="8" y="${i*rowH+18}" font-size="12" fill="var(--fg)">${esc(n.slice(0,18))}</text>`;
+    runs.filter(r => r.name === n).forEach(r => {
+      const x1 = x(new Date(r.start)), x2 = Math.max(x(new Date(r.end)), x1 + 3);
+      g += `<rect x="${x1}" y="${i*rowH+5}" width="${x2-x1}" height="${rowH-12}" rx="3" fill="var(--run)"><title>${esc(n)}: ${fmtTs(r.start)}</title></rect>`;
+    });
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Aktivität pro Gerät">${g}</svg>`;
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])); }
+load().catch(e => { document.getElementById("stamp").textContent = "Noch keine Daten (" + e.message + ")"; });
+</script>
+</body>
+</html>

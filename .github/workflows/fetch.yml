@@ -1,0 +1,37 @@
+name: Miele abfragen
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: miele-fetch
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Daten abrufen
+        env:
+          MIELE_CLIENT_ID: ${{ secrets.MIELE_CLIENT_ID }}
+          MIELE_CLIENT_SECRET: ${{ secrets.MIELE_CLIENT_SECRET }}
+          MIELE_REFRESH_TOKEN: ${{ secrets.MIELE_REFRESH_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/fetch.py
+      - name: Änderungen committen
+        run: |
+          git config user.name "miele-bot"
+          git config user.email "miele-bot@users.noreply.github.com"
+          git add docs/data
+          git diff --cached --quiet || git commit -m "Miele-Daten $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
