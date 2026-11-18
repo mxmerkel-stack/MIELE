@@ -23,19 +23,35 @@ client_id = os.environ["MIELE_CLIENT_ID"]
 client_secret = os.environ["MIELE_CLIENT_SECRET"]
 old_refresh = os.environ["MIELE_REFRESH_TOKEN"]
 
+REPO = os.environ.get("GITHUB_REPOSITORY")
+GH_ENV = {**os.environ, "GH_TOKEN": os.environ.get("GH_PAT", "")}
+
+
+def fail(msg):
+    print("::error::" + msg)
+    raise SystemExit(1)
+
+
+# Vor dem Token-Tausch prüfen, ob GH_PAT Secrets schreiben darf - sonst ginge das
+# neue (rotierte) Miele-Token verloren und das alte wäre trotzdem verbraucht.
+if REPO:
+    if not os.environ.get("GH_PAT"):
+        fail("Secret GH_PAT fehlt. Ohne GH_PAT kann das rotierte Miele-Token nicht gespeichert werden - Abbruch, Miele-Token bleibt gültig.")
+    chk = subprocess.run(["gh", "api", f"repos/{REPO}/actions/secrets/public-key"],
+                         capture_output=True, text=True, env=GH_ENV)
+    if chk.returncode != 0:
+        fail("GH_PAT darf keine Secrets schreiben (Token prüfen: Repo 'miele' ausgewählt, Berechtigung 'Secrets: Read and write', nicht abgelaufen). "
+             "GitHub meldet: " + (chk.stderr or chk.stdout).strip()[:200] + " - Abbruch, Miele-Token bleibt gültig.")
+
 tok = refresh(client_id, client_secret, old_refresh)
 
 new_refresh = tok.get("refresh_token")
-if new_refresh and new_refresh != old_refresh:
-    if os.environ.get("GH_PAT") and os.environ.get("GITHUB_REPOSITORY"):
-        subprocess.run(
-            ["gh", "secret", "set", "MIELE_REFRESH_TOKEN", "--repo", os.environ["GITHUB_REPOSITORY"]],
-            input=new_refresh.encode(), check=True,
-            env={**os.environ, "GH_TOKEN": os.environ["GH_PAT"]},
-        )
-        print("::notice::Refresh-Token rotiert und Secret aktualisiert.")
-    else:
-        print("::warning::Miele hat das Refresh-Token rotiert, GH_PAT fehlt - Secret nicht aktualisiert.")
+if new_refresh and new_refresh != old_refresh and REPO:
+    res = subprocess.run(["gh", "secret", "set", "MIELE_REFRESH_TOKEN", "--repo", REPO],
+                         input=new_refresh, capture_output=True, text=True, env=GH_ENV)
+    if res.returncode != 0:
+        fail("Neues Miele-Token konnte nicht gespeichert werden: " + (res.stderr or res.stdout).strip()[:200])
+    print("Refresh-Token rotiert und Secret aktualisiert.")
 
 
 def val(d, *keys):
